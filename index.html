@@ -236,11 +236,32 @@
   }
   .identity strong { font-family: 'Cinzel', serif; }
 
-  .values-block {
+  .values-block { margin-bottom: 0.5rem; }
+  .tier-head {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--ink);
+    margin-top: 1.4rem;
+    margin-bottom: 0.1rem;
+    letter-spacing: 0.02em;
+  }
+  .tier-head.muted { color: var(--ink-soft); }
+  .tier-intro {
+    font-style: italic;
+    color: var(--ink-soft);
+    margin-bottom: 0.7rem;
+    font-size: 1rem;
+  }
+  .tier-divider {
+    border: none;
+    border-top: 2px solid rgba(176,141,63,0.5);
+    margin: 1.8rem 0 0;
+  }
+  .values-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 1.1rem 1.4rem;
-    margin-bottom: 0.5rem;
   }
   .value-group { }
   .value-head {
@@ -335,19 +356,24 @@
 const COLORS = {
   W: { name: "White",  pip: "w",
        summary: "order, cooperation, and the rule of law",
-       values: ["Peace", "Unity", "Cooperation", "Order", "Rule of law"] },
+       values: ["Peace", "Unity", "Cooperation", "Order", "Rule of law"],
+       desc: "You believe in structure, fairness, and the good of the group. You trust that shared rules and cooperation make life better for everyone, and you're willing to put the collective ahead of yourself." },
   U: { name: "Blue",   pip: "u",
        summary: "logic, curiosity, and the pursuit of truth",
-       values: ["Logic", "Curiosity", "Truth"] },
+       values: ["Logic", "Curiosity", "Knowledge", "Truth", "Reason"],
+       desc: "You lead with your mind. You want to understand how things work before you act, you value learning for its own sake, and you trust careful thought over gut reaction." },
   B: { name: "Black",  pip: "b",
        summary: "ambition, agency, and self-determination",
-       values: ["Agency", "Desire", "Ruthlessness", "Moral self-determination"] },
+       values: ["Agency", "Ambition", "Desire", "Ruthlessness", "Self-determination"],
+       desc: "You take ownership of your life and pursue what you want without apology. You believe you alone are responsible for your outcomes, and you're willing to make hard choices to get where you're going." },
   R: { name: "Red",    pip: "r",
        summary: "passion, freedom, and acting on what you feel",
-       values: ["Passion", "Freedom", "Impulse", "Action", "Exploration"] },
+       values: ["Passion", "Freedom", "Impulse", "Action", "Exploration"],
+       desc: "You live by what you feel. You value freedom and authenticity, you act on instinct and emotion, and you'd rather chase what excites you than wait around overthinking it." },
   G: { name: "Green",  pip: "g",
        summary: "instinct, growth, and harmony with how things are",
-       values: ["Harmony", "Instinct", "Growth", "Tradition"] }
+       values: ["Harmony", "Instinct", "Growth", "Tradition", "Acceptance"],
+       desc: "You trust the natural order of things. You value instinct over analysis, you accept people and situations as they are, and you find strength in growth, patience, and tradition." }
 };
 
 const QUESTIONS = [
@@ -539,19 +565,27 @@ function showResults() {
     ? "Every color cleared the bar"
     : `${names.join(" / ")}`;
 
-  // Tiered identity sentences
+  // Longer, conversational identity description built from the tiers.
   let identityHTML;
   if (allFive) {
-    identityHTML = `You scored evenly across all five colors, which makes you <strong>WUBRG</strong>, the full rainbow. You don't reject any single philosophy; you draw on all of them.`;
+    identityHTML = `You scored at least three in every color, which makes you <strong>WUBRG</strong>, the full five-color spectrum. You don't reject any single philosophy. Order, knowledge, ambition, passion, and instinct all pull at you, and rather than pick one lane you draw on whichever the moment calls for. That breadth is rare, and it means you resist being boxed into any one way of seeing the world.`;
   } else {
-    const tierSentences = tiers.map((group, idx) => {
-      const label = tierWords[idx];
-      const colorNames = joinNames(group.map(c => COLORS[c].name));
-      const summaries = group.map(c => COLORS[c].summary).join("; and ");
-      const verb = group.length > 1 ? "traits are" : "trait is";
-      return `Your ${label} ${verb} <strong>${colorNames}</strong>: ${summaries}.`;
-    });
-    identityHTML = tierSentences.join(" ") + ` Together, this is the <strong>${comboName}</strong> identity.`;
+    const parts = [];
+    const dom = tiers[0];
+    const domNames = joinNames(dom.map(c => COLORS[c].name));
+    const domVerb = dom.length > 1 ? "your dominant colors" : "your dominant color";
+    parts.push(`Your color identity is <strong>${comboName}</strong>. ${domNames} ${dom.length > 1 ? "are" : "is"} ${domVerb}, and ${dom.length > 1 ? "they shape" : "it shapes"} how you move through the world. ${dom.map(c => COLORS[c].desc).join(" ")}`);
+    if (tiers[1]) {
+      const sec = tiers[1];
+      const secNames = joinNames(sec.map(c => COLORS[c].name));
+      parts.push(`Beneath that, ${secNames} ${sec.length > 1 ? "give" : "gives"} you a strong secondary current. ${sec.map(c => COLORS[c].desc).join(" ")}`);
+    }
+    if (tiers[2]) {
+      const ter = tiers[2];
+      const terNames = joinNames(ter.map(c => COLORS[c].name));
+      parts.push(`There's also a thread of ${terNames} in you, quieter but real. ${ter.map(c => COLORS[c].desc).join(" ")}`);
+    }
+    identityHTML = parts.join(" ");
   }
 
   $("resTitle").textContent = title;
@@ -577,13 +611,43 @@ function showResults() {
     });
   });
 
-  // ---- Value lists: all five colors, heading + bullets ----
+  // ---- Tiered value lists with headings, then a divider, then the rest ----
   const valuesEl = $("valuesBlock");
-  valuesEl.innerHTML = ranked.map(c => `
-    <div class="value-group">
-      <div class="value-head"><span class="pip ${COLORS[c].pip}"></span>${COLORS[c].name}</div>
-      <ul class="value-list">${COLORS[c].values.map(v => `<li>${v}</li>`).join("")}</ul>
-    </div>`).join("");
+  const tierHeads = ["Your Primary Traits", "Your Secondary Traits", "Your Tertiary Traits"];
+
+  function colorCard(c) {
+    return `
+      <div class="value-group">
+        <div class="value-head"><span class="pip ${COLORS[c].pip}"></span>${COLORS[c].name}</div>
+        <ul class="value-list">${COLORS[c].values.map(v => `<li>${v}</li>`).join("")}</ul>
+      </div>`;
+  }
+
+  let valuesHTML = "";
+
+  if (allFive) {
+    // No tiers worth splitting; show all five under one heading.
+    valuesHTML += `<div class="tier-head">Your Traits</div>`;
+    valuesHTML += `<p class="tier-intro">You value all five, in roughly equal measure:</p>`;
+    valuesHTML += `<div class="values-grid">${ranked.map(colorCard).join("")}</div>`;
+  } else {
+    tiers.forEach((group, idx) => {
+      valuesHTML += `<div class="tier-head">${tierHeads[idx]}</div>`;
+      valuesHTML += `<p class="tier-intro">You likely value:</p>`;
+      valuesHTML += `<div class="values-grid">${group.map(colorCard).join("")}</div>`;
+    });
+
+    // Colors NOT in the identity, shown below a divider.
+    const others = ranked.filter(c => !identityColors.includes(c));
+    if (others.length) {
+      valuesHTML += `<hr class="tier-divider">`;
+      valuesHTML += `<div class="tier-head muted">Outside Your Identity</div>`;
+      valuesHTML += `<p class="tier-intro">These pull at you less, if at all:</p>`;
+      valuesHTML += `<div class="values-grid">${others.map(colorCard).join("")}</div>`;
+    }
+  }
+
+  valuesEl.innerHTML = valuesHTML;
 }
 
 function orderKey(letters) {
