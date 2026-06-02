@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Color Identity Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --w: #f8f3d9;
+    --w-deep: #c9b458;
+    --u: #2a6db5;
+    --u-deep: #1a4a82;
+    --b: #4a4a55;
+    --b-deep: #1f1f28;
+    --r: #c43d2e;
+    --r-deep: #8a2418;
+    --g: #2e7d4f;
+    --g-deep: #1a5235;
+    --parchment: #ece3cf;
+    --ink: #2b2419;
+    --ink-soft: #5a4f3c;
+    --gold: #b08d3f;
+    --frame: #1a160e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'EB Garamond', Georgia, serif;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(176,141,63,0.10), transparent 50%),
+      radial-gradient(circle at 80% 90%, rgba(42,109,181,0.08), transparent 50%),
+      #14110a;
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: var(--parchment);
+  }
+
+  .pips {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 1.4rem;
+  }
+  .pip {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.35);
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), 0 2px 5px rgba(0,0,0,0.5);
+  }
+  .pip.w { background: radial-gradient(circle at 35% 30%, #fffef5, var(--w-deep)); }
+  .pip.u { background: radial-gradient(circle at 35% 30%, #6fa8e0, var(--u-deep)); }
+  .pip.b { background: radial-gradient(circle at 35% 30%, #6a6a78, var(--b-deep)); }
+  .pip.r { background: radial-gradient(circle at 35% 30%, #e8765f, var(--r-deep)); }
+  .pip.g { background: radial-gradient(circle at 35% 30%, #5aa978, var(--g-deep)); }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  }
+  header p {
+    font-style: italic;
+    color: #c9bfa0;
+    margin-top: 0.8rem;
+    font-size: 1.05rem;
+  }
+
+  .card {
+    background:
+      linear-gradient(165deg, #f4ecd6, #e3d7ba);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 2rem 1.8rem;
+    box-shadow:
+      0 0 0 6px var(--frame),
+      0 0 0 7px var(--gold),
+      0 20px 50px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(176,141,63,0.35);
+    border-radius: 8px;
+    pointer-events: none;
+  }
+
+  .progress-line {
+    font-family: 'Cinzel', serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+  }
+  .bar {
+    height: 5px;
+    background: rgba(0,0,0,0.12);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1.8rem;
+  }
+  .bar > span {
+    display: block; height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--gold), #d8b659);
+    transition: width 0.35s ease;
+  }
+
+  .question {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    margin-bottom: 1.4rem;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .options { list-style: none; display: grid; gap: 0.7rem; }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    width: 100%;
+    text-align: left;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid rgba(43,36,25,0.18);
+    border-radius: 9px;
+    padding: 0.85rem 1rem;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+  .opt:hover {
+    background: rgba(255,255,255,0.85);
+    border-color: var(--gold);
+    transform: translateX(4px);
+  }
+  .opt .letter {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    width: 30px; height: 30px;
+    flex: 0 0 30px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--frame);
+    color: var(--parchment);
+    font-size: 0.9rem;
+  }
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.8rem;
+    gap: 1rem;
+  }
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--frame);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+  }
+  .btn:hover:not(:disabled) { background: var(--frame); color: var(--parchment); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Results */
+  .result-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 1.9rem;
+    text-align: center;
+    margin-bottom: 0.4rem;
+  }
+  .result-sub {
+    text-align: center;
+    font-style: italic;
+    color: var(--ink-soft);
+    margin-bottom: 1.6rem;
+  }
+  .ranks { display: grid; gap: 0.7rem; margin-bottom: 1.8rem; }
+  .rank-row {
+    display: grid;
+    grid-template-columns: 28px 90px 1fr 44px;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .rank-row .pip { width: 24px; height: 24px; box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.4); }
+  .rank-name { font-family: 'Cinzel', serif; font-weight: 500; font-size: 0.95rem; }
+  .rank-bar { height: 10px; background: rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; }
+  .rank-bar > span { display: block; height: 100%; border-radius: 5px; width: 0; transition: width 0.7s cubic-bezier(.2,.8,.2,1); }
+  .rank-bar.w > span { background: var(--w-deep); }
+  .rank-bar.u > span { background: var(--u); }
+  .rank-bar.b > span { background: var(--b); }
+  .rank-bar.r > span { background: var(--r); }
+  .rank-bar.g > span { background: var(--g); }
+  .rank-val { font-family: 'Cinzel', serif; font-weight: 700; text-align: right; }
+
+  .identity {
+    text-align: center;
+    background: rgba(255,255,255,0.4);
+    border: 1px solid rgba(176,141,63,0.4);
+    border-radius: 9px;
+    padding: 1.2rem;
+    margin-bottom: 1.6rem;
+    font-size: 1.1rem;
+  }
+  .identity strong { font-family: 'Cinzel', serif; }
+
+  .hidden { display: none; }
+  .fade { animation: fade 0.4s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  footer { text-align: center; color: #8c7f63; font-size: 0.85rem; margin-top: 2rem; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="pips">
+      <span class="pip w"></span><span class="pip u"></span><span class="pip b"></span><span class="pip r"></span><span class="pip g"></span>
+    </div>
+    <h1>Magic Color Identity Quiz</h1>
+    <p>Go with your gut. Don't overthink it. Be honest.</p>
+  </header>
+
+  <div class="card" id="card">
+    <!-- Intro -->
+    <div id="intro">
+      <p class="question" style="font-size:1.25rem;">Fifteen questions. Five colors. One philosophy.</p>
+      <p style="margin-bottom:1.4rem;">Each question offers five answers in a shuffled order, so there's no pattern to game. Choose the one that rings truest and you'll get a ranked breakdown of your color identity across White, Blue, Black, Red, and Green.</p>
+      <div class="controls">
+        <span></span>
+        <button class="btn" id="startBtn">Begin</button>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <div id="quiz" class="hidden">
+      <div class="progress-line" id="progress">Question 1 of 15</div>
+      <div class="bar"><span id="barFill"></span></div>
+      <div class="question" id="qText"></div>
+      <ul class="options" id="opts"></ul>
+      <div class="controls">
+        <button class="btn" id="backBtn" disabled>Back</button>
+        <span></span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="hidden">
+      <div class="result-title" id="resTitle"></div>
+      <div class="result-sub" id="resSub"></div>
+      <div class="ranks" id="ranks"></div>
+      <div class="identity" id="identity"></div>
+      <div class="controls">
+        <button class="btn" id="retakeBtn">Take it again</button>
+        <span></span>
+      </div>
+    </div>
+  </div>
+
+  <footer>Built for fun. Color identity is a spectrum, not a cage.</footer>
+</div>
+
+<script>
+// ---- Data ----------------------------------------------------------------
+// Each option carries its OWN color tag. Display order is shuffled per attempt,
+// but scoring always reads .color, never the on-screen letter. So a shuffle
+// never breaks the tally.
+const COLORS = {
+  W: { name: "White",  pip: "w", drives: "order, peace, and the good of the group" },
+  U: { name: "Blue",   pip: "u", drives: "knowledge, growth, and perfection through thought" },
+  B: { name: "Black",  pip: "b", drives: "ambition, self-reliance, and getting what you want" },
+  R: { name: "Red",    pip: "r", drives: "passion, freedom, and acting on what you feel" },
+  G: { name: "Green",  pip: "g", drives: "instinct, acceptance, and harmony with the way things are" }
+};
+
+const QUESTIONS = [
+  { q: "What drives you most?", o: [
+    ["Doing what's right","W"],["Becoming better","U"],["Getting ahead","B"],["Feeling alive","R"],["Being true to yourself","G"] ]},
+  { q: "In a disagreement, you:", o: [
+    ["Try to find a fair solution","W"],["Step back and analyze","U"],["Push for your outcome","B"],["React honestly in the moment","R"],["Let things settle naturally","G"] ]},
+  { q: "Your ideal role:", o: [
+    ["Protector","W"],["Strategist","U"],["Leader","B"],["Spark","R"],["Anchor","G"] ]},
+  { q: "Your biggest flaw:", o: [
+    ["Too rigid","W"],["Overthinking","U"],["Self-serving","B"],["Impulsive","R"],["Resistant","G"] ]},
+  { q: "Rules are:", o: [
+    ["Necessary","W"],["Useful tools","U"],["Optional","B"],["Limiting","R"],["Part of a bigger system","G"] ]},
+  { q: "In relationships, you value:", o: [
+    ["Loyalty","W"],["Understanding","U"],["Independence","B"],["Passion","R"],["Stability","G"] ]},
+  { q: "Something isn't working. You:", o: [
+    ["Fix it properly the way it was","W"],["Research better methods","U"],["Find a workaround that benefits you","B"],["Try something bold","R"],["Step back and reassess the situation","G"] ]},
+  { q: "Your worldview:", o: [
+    ["People need structure","W"],["People can improve","U"],["People must look out for themselves","B"],["People should follow their hearts","R"],["People should embrace who they are","G"] ]},
+  { q: "Your approach to time:", o: [
+    ["Respect tradition","W"],["Plan ahead","U"],["Act when opportunity appears","B"],["Live in the moment","R"],["Trust timing will work itself out","G"] ]},
+  { q: "What frustrates you most?", o: [
+    ["Disorder","W"],["Ignorance","U"],["Weakness","B"],["Being controlled","R"],["Things that feel unnatural","G"] ]},
+  { q: "Success means:", o: [
+    ["Doing the right thing","W"],["Reaching your potential","U"],["Winning","B"],["Loving life","R"],["Living authentically","G"] ]},
+  { q: "You trust:", o: [
+    ["Systems","W"],["Knowledge","U"],["Yourself","B"],["Your emotions","R"],["Your instincts","G"] ]},
+  { q: "When making a big choice:", o: [
+    ["Consider impact on others","W"],["Gather more information","U"],["Choose what benefits you most","B"],["Go with your gut feeling","R"],["Choose what feels right for the long-term","G"] ]},
+  { q: "Your energy is:", o: [
+    ["Steady and reliable","W"],["Focused and thoughtful","U"],["Driven and intense","B"],["Expressive and passionate","R"],["Calm and grounded","G"] ]},
+  { q: "You believe life is about:", o: [
+    ["Responsibility","W"],["Growth","U"],["Opportunity","B"],["Experiences","R"],["Balance","G"] ]}
+];
+
+// Two-color guild names (order-independent)
+const GUILDS = {
+  WU:"Azorius", UB:"Dimir", BR:"Rakdos", RG:"Gruul", WG:"Selesnya",
+  WB:"Orzhov", UR:"Izzet", BG:"Golgari", WR:"Boros", UG:"Simic"
+};
+
+const LETTERS = ["A","B","C","D","E"];
+
+// ---- State ---------------------------------------------------------------
+let current = 0;
+let answers = [];          // answers[i] = color letter chosen for question i
+let shuffledOpts = [];     // shuffledOpts[i] = array of [text,color] in display order
+
+// ---- Helpers -------------------------------------------------------------
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildShuffle() {
+  shuffledOpts = QUESTIONS.map(item => shuffle(item.o));
+}
+
+// ---- Render --------------------------------------------------------------
+const $ = id => document.getElementById(id);
+
+function showQuestion(i) {
+  const item = QUESTIONS[i];
+  $("progress").textContent = `Question ${i + 1} of ${QUESTIONS.length}`;
+  $("barFill").style.width = `${(i / QUESTIONS.length) * 100}%`;
+  $("qText").textContent = item.q;
+
+  const list = $("opts");
+  list.innerHTML = "";
+  shuffledOpts[i].forEach((opt, idx) => {
+    const [text, color] = opt;
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.className = "opt";
+    btn.innerHTML = `<span class="letter">${LETTERS[idx]}</span><span>${text}</span>`;
+    btn.addEventListener("click", () => choose(color));
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+
+  $("backBtn").disabled = (i === 0);
+  $("quiz").classList.add("fade");
+  setTimeout(() => $("quiz").classList.remove("fade"), 400);
+}
+
+function choose(color) {
+  answers[current] = color;
+  if (current < QUESTIONS.length - 1) {
+    current++;
+    showQuestion(current);
+  } else {
+    showResults();
+  }
+}
+
+function showResults() {
+  $("quiz").classList.add("hidden");
+  $("results").classList.remove("hidden");
+  $("results").classList.add("fade");
+
+  // Tally
+  const tally = { W:0, U:0, B:0, R:0, G:0 };
+  answers.forEach(c => tally[c]++);
+  const ranked = Object.keys(tally).sort((a,b) => tally[b] - tally[a]);
+  const total = QUESTIONS.length;
+  const max = tally[ranked[0]];
+
+  // Determine identity: colors tied for the top
+  const tops = ranked.filter(c => tally[c] === max);
+
+  let title, sub, identityHTML;
+  if (tops.length === 1) {
+    const c = tops[0];
+    title = `Mono-${COLORS[c].name}`;
+    sub = `${max} of ${total} answers`;
+    identityHTML = `You lean toward <strong>${COLORS[c].name}</strong>: ${COLORS[c].drives}.`;
+  } else if (tops.length === 2) {
+    const key = orderKey(tops[0], tops[1]);
+    const guild = GUILDS[key] || `${COLORS[tops[0]].name}-${COLORS[tops[1]].name}`;
+    title = `${COLORS[tops[0]].name}/${COLORS[tops[1]].name}`;
+    sub = `${guild} \u2014 a tie at ${max} each`;
+    identityHTML = `You sit between <strong>${COLORS[tops[0]].name}</strong> and <strong>${COLORS[tops[1]].name}</strong>, the ${guild} pairing. You balance ${COLORS[tops[0]].drives} with ${COLORS[tops[1]].drives}.`;
+  } else {
+    title = tops.map(c => COLORS[c].name).join(" / ");
+    sub = `A ${tops.length}-way tie at ${max} each`;
+    identityHTML = `Your answers spread across <strong>${tops.map(c=>COLORS[c].name).join(", ")}</strong>. You don't fit one mold, and that's a legitimate result.`;
+  }
+
+  $("resTitle").textContent = title;
+  $("resSub").textContent = sub;
+  $("identity").innerHTML = identityHTML;
+
+  // Ranked breakdown (full)
+  const ranksEl = $("ranks");
+  ranksEl.innerHTML = "";
+  ranked.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "rank-row";
+    row.innerHTML = `
+      <span class="pip ${COLORS[c].pip}"></span>
+      <span class="rank-name">${COLORS[c].name}</span>
+      <span class="rank-bar ${COLORS[c].pip}"><span data-w="${(tally[c]/total)*100}"></span></span>
+      <span class="rank-val">${tally[c]}</span>`;
+    ranksEl.appendChild(row);
+  });
+  // animate bars
+  requestAnimationFrame(() => {
+    ranksEl.querySelectorAll(".rank-bar > span").forEach(s => {
+      s.style.width = s.dataset.w + "%";
+    });
+  });
+}
+
+function orderKey(a, b) {
+  // canonical WUBRG ordering so WU and UW map to the same guild key
+  const order = "WUBRG";
+  return [a,b].sort((x,y) => order.indexOf(x) - order.indexOf(y)).join("");
+}
+
+// ---- Flow ----------------------------------------------------------------
+function startQuiz() {
+  current = 0;
+  answers = [];
+  buildShuffle();          // reshuffle every attempt
+  $("intro").classList.add("hidden");
+  $("results").classList.add("hidden");
+  $("quiz").classList.remove("hidden");
+  showQuestion(0);
+}
+
+$("startBtn").addEventListener("click", startQuiz);
+$("retakeBtn").addEventListener("click", startQuiz);
+$("backBtn").addEventListener("click", () => {
+  if (current > 0) { current--; showQuestion(current); }
+});
+</script>
+</body>
+</html>
