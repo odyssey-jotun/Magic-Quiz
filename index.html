@@ -298,11 +298,16 @@
 // but scoring always reads .color, never the on-screen letter. So a shuffle
 // never breaks the tally.
 const COLORS = {
-  W: { name: "White",  pip: "w", drives: "order, peace, and the good of the group" },
-  U: { name: "Blue",   pip: "u", drives: "knowledge, growth, and perfection through thought" },
-  B: { name: "Black",  pip: "b", drives: "ambition, self-reliance, and getting what you want" },
-  R: { name: "Red",    pip: "r", drives: "passion, freedom, and acting on what you feel" },
-  G: { name: "Green",  pip: "g", drives: "instinct, acceptance, and harmony with the way things are" }
+  W: { name: "White",  pip: "w", drives: "order, peace, and the good of the group",
+       traits: "peace, unity, cooperation, order, and the rule of law" },
+  U: { name: "Blue",   pip: "u", drives: "knowledge, growth, and perfection through thought",
+       traits: "logic, curiosity, and truth" },
+  B: { name: "Black",  pip: "b", drives: "ambition, self-reliance, and getting what you want",
+       traits: "agency, desire, ruthlessness, and moral self-determination" },
+  R: { name: "Red",    pip: "r", drives: "passion, freedom, and acting on what you feel",
+       traits: "passion, freedom, impulse, action, and exploration" },
+  G: { name: "Green",  pip: "g", drives: "instinct, acceptance, and harmony with the way things are",
+       traits: "harmony, instinct, growth, and tradition" }
 };
 
 const QUESTIONS = [
@@ -447,32 +452,15 @@ function showResults() {
   const max = tally[ranked[0]];
 
   // ---- GRADING RULE -------------------------------------------------------
-  // A color is part of your identity if it scored 4 or more (the hard floor:
-  // 15 questions / 5 colors = 3 average, so 4 is the first score above chance).
-  // Then we rescue ONE borderline color scoring exactly 3, but only if there's
-  // a real cliff beneath it (the next color is at least 2 lower). That handles
-  // spreads like 4-4-3-1, where the 3 is clearly grouped with the strong colors,
-  // while leaving a lonely 3 (like 4-3-3-3) out as noise.
-  // Surviving colors define the result: 1 = mono, 2 = guild, 3 = shard/wedge,
-  // 4 = quad, 5 = WUBRG. The highest survivor is your anchor.
-  let identityColors = ranked.filter(c => tally[c] >= 4);
-
-  // Rescue the single highest sub-4 color if it scored 3 with a cliff below it.
-  const leftover = ranked.filter(c => tally[c] < 4);
-  if (leftover.length) {
-    const cand = leftover[0];
-    if (tally[cand] === 3) {
-      const idx = ranked.indexOf(cand);
-      const below = (idx + 1 < ranked.length) ? tally[ranked[idx + 1]] : 0;
-      if (tally[cand] - below >= 2) identityColors.push(cand);
-    }
-  }
-
-  // Safety net: if nobody cleared the bar (a very flat spread), fall back to
-  // whichever color(s) tied for the top so the quiz always names something.
-  if (identityColors.length === 0) {
-    identityColors = ranked.filter(c => tally[c] === max);
-  }
+  // A color counts toward your identity if it scored 3 or more. Below 3 is
+  // noise. We normally cap the identity at the top three colors (a shard/wedge
+  // is the most a leaning person lands on). But because all scores must sum to
+  // 15, a perfectly even spread is 3-3-3-3-3: every color clears the bar and
+  // nothing leads. That isn't "no identity," it's the WUBRG five-color player
+  // who values all five philosophies and refuses to leave any out.
+  // Surviving colors: 1 = mono, 2 = guild, 3 = shard/wedge, 5 = WUBRG.
+  const allFive = ranked.every(c => tally[c] >= 3);
+  let identityColors = allFive ? ranked.slice() : ranked.filter(c => tally[c] >= 3).slice(0, 3);
 
   const anchor = identityColors[0];           // highest-scoring surviving color
   const key = orderKey(identityColors);
@@ -480,29 +468,24 @@ function showResults() {
   const names = identityColors.map(c => COLORS[c].name);
 
   let title, sub, identityHTML;
-  if (n === 1) {
+  if (allFive) {
+    title = "WUBRG \u2014 Five-Color";
+    sub = "Every color cleared the bar";
+    identityHTML = `Your color identity is <strong>WUBRG</strong>, the full rainbow. You scored 3 or more in all five colors, which means you don't reject any of them. You value order, knowledge, ambition, passion, and instinct alike, and you refuse to be boxed into a single philosophy.`;
+  } else if (n === 1) {
     title = `Mono-${COLORS[anchor].name}`;
     sub = `${tally[anchor]} of ${total} answers`;
-    identityHTML = `Your identity is <strong>Mono-${COLORS[anchor].name}</strong>. You value ${COLORS[anchor].drives}.`;
+    identityHTML = `Your identity is <strong>Mono-${COLORS[anchor].name}</strong>. As ${COLORS[anchor].name}, you're drawn to ${COLORS[anchor].traits}.`;
   } else if (n === 2) {
     const g = GUILDS[key];
     title = g.name;
     sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
-    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
-  } else if (n === 3) {
+    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} Your strongest pull is ${COLORS[anchor].name}, which draws you toward ${COLORS[anchor].traits}.`;
+  } else {
     const t = TRIOS[key];
     title = t.name;
     sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
-    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
-  } else if (n === 4) {
-    const q = QUADS[key];
-    title = q.name;
-    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
-    identityHTML = `Your color identity is <strong>${q.name}</strong>, a four-color spread. It's ${q.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
-  } else {
-    title = "WUBRG \u2014 Five-Color";
-    sub = "Every color cleared the bar";
-    identityHTML = `Your color identity is <strong>WUBRG</strong>, the full rainbow. You scored 4 or more in all five colors, anchored in ${COLORS[anchor].name}. Rare, and a little chaotic.`;
+    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} Your strongest pull is ${COLORS[anchor].name}, which draws you toward ${COLORS[anchor].traits}.`;
   }
 
   $("resTitle").textContent = title;
