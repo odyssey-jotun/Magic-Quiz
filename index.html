@@ -338,10 +338,42 @@ const QUESTIONS = [
     ["Responsibility","W"],["Growth","U"],["Opportunity","B"],["Experiences","R"],["Balance","G"] ]}
 ];
 
-// Two-color guild names (order-independent)
+// Two-color guild names (order-independent, canonical WUBRG key).
+// Each carries a short flavor line drawn from the color philosophy.
 const GUILDS = {
-  WU:"Azorius", UB:"Dimir", BR:"Rakdos", RG:"Gruul", WG:"Selesnya",
-  WB:"Orzhov", UR:"Izzet", BG:"Golgari", WR:"Boros", UG:"Simic"
+  WU:{ name:"Azorius", desc:"the rule-makers, both colors driven to improve the world and impose order, white through peace and blue through perfection." },
+  UB:{ name:"Dimir",   desc:"the spies, built on secrecy, manipulation, and quiet control." },
+  BR:{ name:"Rakdos",  desc:"the showmen of destruction and self-indulgence, all spectacle and impulse." },
+  RG:{ name:"Gruul",   desc:"the wild ones, where red's love of freedom meets green's pull toward nature against the spread of civilization." },
+  WG:{ name:"Selesnya",desc:"the harmonizers, striving for balance between civilization and the natural world." },
+  WB:{ name:"Orzhov",  desc:"the power-brokers, borrowing order from white and hunger for power from black, where wealth is control." },
+  UR:{ name:"Izzet",   desc:"the mad scientists, brilliant and obsessive, rushing into experiments just to see what happens." },
+  BG:{ name:"Golgari", desc:"the cycle of life and death, equal parts decay and slow growth." },
+  WR:{ name:"Boros",   desc:"the righteous army, zealous and forthright, masters of combat and sheer numbers." },
+  UG:{ name:"Simic",   desc:"the adapters, preserving nature while forcing growth and evolution on anything it touches." }
+};
+
+// Three-color shards and wedges, keyed by sorted WUBRG letters.
+const TRIOS = {
+  WUG:{ name:"Bant",   desc:"a primarily white realm of noble order and enchantment, with green and blue in support." },
+  WUB:{ name:"Esper",  desc:"a primarily blue realm where control and purpose are prized and savagery is tamped down, backed by white's order and black's ambition." },
+  UBR:{ name:"Grixis", desc:"a primarily black realm of death and the seven deadly sins, where benefiting from destruction is the whole point." },
+  BRG:{ name:"Jund",   desc:"a primarily red realm of eat-or-be-eaten survival, fast and resourceful, with black's sacrifice and green's ramp." },
+  WRG:{ name:"Naya",   desc:"a primarily green realm of hypergrowth and behemoths, where small creatures clear the way for giants." },
+  WBG:{ name:"Abzan",  desc:"the white-anchored wedge of endurance, keeping permanents on the board through resilience and lifegain." },
+  WUR:{ name:"Jeskai", desc:"the blue-anchored wedge of cunning, growing threats while disrupting with counterspells and burn." },
+  UBG:{ name:"Sultai", desc:"the black-anchored wedge of ruthlessness, mining the graveyard through self-mill and reanimation." },
+  WBR:{ name:"Mardu",  desc:"the red-anchored wedge of speed, fast and hard, finishing before the opponent can react." },
+  URG:{ name:"Temur",  desc:"the green-anchored wedge of savagery, big creatures and spell-copying chaos." }
+};
+
+// Four-color names (Nephilim). Each is defined by the color it lacks.
+const QUADS = {
+  UBRG:{ name:"Glint-Eye",  desc:"everything but order. No rules, no group loyalty, no restraint for the common good. Raw self-interest, instinct, and intellect with nothing telling it to play fair. Brilliant and adaptable, but it answers to no one." },
+  WBRG:{ name:"Dune-Brood", desc:"everything but caution. No patience, no second-guessing, no need to gather more information before acting. It feels, decides, and moves, balancing morality against ambition and instinct, but it never stops to overthink. Decisive to a fault." },
+  WURG:{ name:"Ink-Treader", desc:"everything but selfishness. No hunger for personal power at others' expense, no willingness to win dirty. The idealist's spread, capable of order, thought, passion, and harmony, but it won't sacrifice someone else to get ahead. Principled, sometimes to its own cost." },
+  WUBG:{ name:"Witch-Maw",  desc:"everything but impulse. No recklessness, no acting purely on feeling, no chaos for its own sake. It plans, controls, and adapts with a steady hand, valuing order, knowledge, ambition, and instinct, but it never lets emotion grab the wheel. Calculated and composed." },
+  WUBR:{ name:"Yore-Tiller", desc:"everything but acceptance. No going with the flow, no trusting that things will work out naturally, no harmony with the way things are. The relentless builder, all order, intellect, ambition, and drive, always pushing to shape the world rather than fit into it. Restless and unwilling to let things be." }
 };
 
 const LETTERS = ["A","B","C","D","E"];
@@ -414,25 +446,63 @@ function showResults() {
   const total = QUESTIONS.length;
   const max = tally[ranked[0]];
 
-  // Determine identity: colors tied for the top
-  const tops = ranked.filter(c => tally[c] === max);
+  // ---- GRADING RULE -------------------------------------------------------
+  // A color is part of your identity if it scored 4 or more (the hard floor:
+  // 15 questions / 5 colors = 3 average, so 4 is the first score above chance).
+  // Then we rescue ONE borderline color scoring exactly 3, but only if there's
+  // a real cliff beneath it (the next color is at least 2 lower). That handles
+  // spreads like 4-4-3-1, where the 3 is clearly grouped with the strong colors,
+  // while leaving a lonely 3 (like 4-3-3-3) out as noise.
+  // Surviving colors define the result: 1 = mono, 2 = guild, 3 = shard/wedge,
+  // 4 = quad, 5 = WUBRG. The highest survivor is your anchor.
+  let identityColors = ranked.filter(c => tally[c] >= 4);
+
+  // Rescue the single highest sub-4 color if it scored 3 with a cliff below it.
+  const leftover = ranked.filter(c => tally[c] < 4);
+  if (leftover.length) {
+    const cand = leftover[0];
+    if (tally[cand] === 3) {
+      const idx = ranked.indexOf(cand);
+      const below = (idx + 1 < ranked.length) ? tally[ranked[idx + 1]] : 0;
+      if (tally[cand] - below >= 2) identityColors.push(cand);
+    }
+  }
+
+  // Safety net: if nobody cleared the bar (a very flat spread), fall back to
+  // whichever color(s) tied for the top so the quiz always names something.
+  if (identityColors.length === 0) {
+    identityColors = ranked.filter(c => tally[c] === max);
+  }
+
+  const anchor = identityColors[0];           // highest-scoring surviving color
+  const key = orderKey(identityColors);
+  const n = identityColors.length;
+  const names = identityColors.map(c => COLORS[c].name);
 
   let title, sub, identityHTML;
-  if (tops.length === 1) {
-    const c = tops[0];
-    title = `Mono-${COLORS[c].name}`;
-    sub = `${max} of ${total} answers`;
-    identityHTML = `You lean toward <strong>${COLORS[c].name}</strong>: ${COLORS[c].drives}.`;
-  } else if (tops.length === 2) {
-    const key = orderKey(tops[0], tops[1]);
-    const guild = GUILDS[key] || `${COLORS[tops[0]].name}-${COLORS[tops[1]].name}`;
-    title = `${COLORS[tops[0]].name}/${COLORS[tops[1]].name}`;
-    sub = `${guild} \u2014 a tie at ${max} each`;
-    identityHTML = `You sit between <strong>${COLORS[tops[0]].name}</strong> and <strong>${COLORS[tops[1]].name}</strong>, the ${guild} pairing. You balance ${COLORS[tops[0]].drives} with ${COLORS[tops[1]].drives}.`;
+  if (n === 1) {
+    title = `Mono-${COLORS[anchor].name}`;
+    sub = `${tally[anchor]} of ${total} answers`;
+    identityHTML = `Your identity is <strong>Mono-${COLORS[anchor].name}</strong>. You value ${COLORS[anchor].drives}.`;
+  } else if (n === 2) {
+    const g = GUILDS[key];
+    title = g.name;
+    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
+    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
+  } else if (n === 3) {
+    const t = TRIOS[key];
+    title = t.name;
+    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
+    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
+  } else if (n === 4) {
+    const q = QUADS[key];
+    title = q.name;
+    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
+    identityHTML = `Your color identity is <strong>${q.name}</strong>, a four-color spread. It's ${q.desc} Your strongest pull is ${COLORS[anchor].name}, valuing ${COLORS[anchor].drives}.`;
   } else {
-    title = tops.map(c => COLORS[c].name).join(" / ");
-    sub = `A ${tops.length}-way tie at ${max} each`;
-    identityHTML = `Your answers spread across <strong>${tops.map(c=>COLORS[c].name).join(", ")}</strong>. You don't fit one mold, and that's a legitimate result.`;
+    title = "WUBRG \u2014 Five-Color";
+    sub = "Every color cleared the bar";
+    identityHTML = `Your color identity is <strong>WUBRG</strong>, the full rainbow. You scored 4 or more in all five colors, anchored in ${COLORS[anchor].name}. Rare, and a little chaotic.`;
   }
 
   $("resTitle").textContent = title;
@@ -460,10 +530,10 @@ function showResults() {
   });
 }
 
-function orderKey(a, b) {
-  // canonical WUBRG ordering so WU and UW map to the same guild key
+function orderKey(letters) {
+  // canonical WUBRG ordering so {B,W,U} and {U,W,B} map to the same key
   const order = "WUBRG";
-  return [a,b].sort((x,y) => order.indexOf(x) - order.indexOf(y)).join("");
+  return letters.slice().sort((x,y) => order.indexOf(x) - order.indexOf(y)).join("");
 }
 
 // ---- Flow ----------------------------------------------------------------
