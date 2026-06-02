@@ -256,8 +256,8 @@
   <div class="card" id="card">
     <!-- Intro -->
     <div id="intro">
-      <p class="question" style="font-size:1.25rem;">Fifteen questions. Five colors. One philosophy.</p>
-      <p style="margin-bottom:1.4rem;">Each question offers five answers in a shuffled order, so there's no pattern to game. Choose the one that rings truest and you'll get a ranked breakdown of your color identity across White, Blue, Black, Red, and Green.</p>
+      <p class="question" style="font-size:1.25rem;">Magic Color Identity Quiz</p>
+      <p style="margin-bottom:1.4rem;">Fifteen questions. Answer honestly and you'll get your color identity with a full breakdown of your scores.</p>
       <div class="controls">
         <span></span>
         <button class="btn" id="startBtn">Begin</button>
@@ -467,6 +467,25 @@ function showResults() {
   const n = identityColors.length;
   const names = identityColors.map(c => COLORS[c].name);
 
+  // Detect a tie for the top score among the identity colors. If two (or more)
+  // colors share the highest score, name all of them as the anchor rather than
+  // silently picking one by WUBRG order.
+  const topScore = tally[anchor];
+  const topColors = identityColors.filter(c => tally[c] === topScore);
+  const anchorNames = topColors.map(c => COLORS[c].name);
+  const anchorTraits = topColors.map(c => `${COLORS[c].name}'s ${COLORS[c].traits}`).join(", and ");
+  // Grammar helper: "Blue" or "Blue and Black" or "Blue, Black, and White"
+  function joinNames(arr) {
+    if (arr.length === 1) return arr[0];
+    if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+    return arr.slice(0, -1).join(", ") + ", and " + arr[arr.length - 1];
+  }
+  const anchorLabel = joinNames(anchorNames);
+  const pullVerb = topColors.length > 1 ? "Your strongest pulls are" : "Your strongest pull is";
+  const drawPhrase = topColors.length > 1
+    ? `which together draw you toward ${anchorTraits}`
+    : `which draws you toward ${COLORS[anchor].traits}`;
+
   let title, sub, identityHTML;
   if (allFive) {
     title = "WUBRG \u2014 Five-Color";
@@ -479,13 +498,13 @@ function showResults() {
   } else if (n === 2) {
     const g = GUILDS[key];
     title = g.name;
-    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
-    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} Your strongest pull is ${COLORS[anchor].name}, which draws you toward ${COLORS[anchor].traits}.`;
+    sub = `${names.join(" / ")} \u2014 anchored in ${anchorLabel}`;
+    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} ${pullVerb} ${anchorLabel}, ${drawPhrase}.`;
   } else {
     const t = TRIOS[key];
     title = t.name;
-    sub = `${names.join(" / ")} \u2014 anchored in ${COLORS[anchor].name}`;
-    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} Your strongest pull is ${COLORS[anchor].name}, which draws you toward ${COLORS[anchor].traits}.`;
+    sub = `${names.join(" / ")} \u2014 anchored in ${anchorLabel}`;
+    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} ${pullVerb} ${anchorLabel}, ${drawPhrase}.`;
   }
 
   $("resTitle").textContent = title;
