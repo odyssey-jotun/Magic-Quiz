@@ -236,6 +236,42 @@
   }
   .identity strong { font-family: 'Cinzel', serif; }
 
+  .values-block {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1.1rem 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .value-group { }
+  .value-head {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+    color: var(--ink);
+  }
+  .value-head .pip { width: 18px; height: 18px; box-shadow: inset 0 1px 2px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.4); }
+  .value-list {
+    list-style: none;
+    padding-left: 0.4rem;
+  }
+  .value-list li {
+    position: relative;
+    padding-left: 0.9rem;
+    font-size: 0.98rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.15rem;
+  }
+  .value-list li::before {
+    content: "\2022";
+    position: absolute;
+    left: 0;
+    color: var(--gold);
+  }
+
   .hidden { display: none; }
   .fade { animation: fade 0.4s ease; }
   @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -282,14 +318,13 @@
       <div class="result-sub" id="resSub"></div>
       <div class="ranks" id="ranks"></div>
       <div class="identity" id="identity"></div>
+      <div class="values-block" id="valuesBlock"></div>
       <div class="controls">
         <button class="btn" id="retakeBtn">Take it again</button>
         <span></span>
       </div>
     </div>
   </div>
-
-  <footer>Built for fun. Color identity is a spectrum, not a cage.</footer>
 </div>
 
 <script>
@@ -298,16 +333,21 @@
 // but scoring always reads .color, never the on-screen letter. So a shuffle
 // never breaks the tally.
 const COLORS = {
-  W: { name: "White",  pip: "w", drives: "order, peace, and the good of the group",
-       traits: "peace, unity, cooperation, order, and the rule of law" },
-  U: { name: "Blue",   pip: "u", drives: "knowledge, growth, and perfection through thought",
-       traits: "logic, curiosity, and truth" },
-  B: { name: "Black",  pip: "b", drives: "ambition, self-reliance, and getting what you want",
-       traits: "agency, desire, ruthlessness, and moral self-determination" },
-  R: { name: "Red",    pip: "r", drives: "passion, freedom, and acting on what you feel",
-       traits: "passion, freedom, impulse, action, and exploration" },
-  G: { name: "Green",  pip: "g", drives: "instinct, acceptance, and harmony with the way things are",
-       traits: "harmony, instinct, growth, and tradition" }
+  W: { name: "White",  pip: "w",
+       summary: "order, cooperation, and the rule of law",
+       values: ["Peace", "Unity", "Cooperation", "Order", "Rule of law"] },
+  U: { name: "Blue",   pip: "u",
+       summary: "logic, curiosity, and the pursuit of truth",
+       values: ["Logic", "Curiosity", "Truth"] },
+  B: { name: "Black",  pip: "b",
+       summary: "ambition, agency, and self-determination",
+       values: ["Agency", "Desire", "Ruthlessness", "Moral self-determination"] },
+  R: { name: "Red",    pip: "r",
+       summary: "passion, freedom, and acting on what you feel",
+       values: ["Passion", "Freedom", "Impulse", "Action", "Exploration"] },
+  G: { name: "Green",  pip: "g",
+       summary: "instinct, growth, and harmony with how things are",
+       values: ["Harmony", "Instinct", "Growth", "Tradition"] }
 };
 
 const QUESTIONS = [
@@ -462,56 +502,63 @@ function showResults() {
   const allFive = ranked.every(c => tally[c] >= 3);
   let identityColors = allFive ? ranked.slice() : ranked.filter(c => tally[c] >= 3).slice(0, 3);
 
-  const anchor = identityColors[0];           // highest-scoring surviving color
+  const anchor = identityColors[0];
   const key = orderKey(identityColors);
   const n = identityColors.length;
   const names = identityColors.map(c => COLORS[c].name);
 
-  // Detect a tie for the top score among the identity colors. If two (or more)
-  // colors share the highest score, name all of them as the anchor rather than
-  // silently picking one by WUBRG order.
-  const topScore = tally[anchor];
-  const topColors = identityColors.filter(c => tally[c] === topScore);
-  const anchorNames = topColors.map(c => COLORS[c].name);
-  const anchorTraits = topColors.map(c => `${COLORS[c].name}'s ${COLORS[c].traits}`).join(", and ");
-  // Grammar helper: "Blue" or "Blue and Black" or "Blue, Black, and White"
+  // Grammar helper: "Red" / "Red and White" / "Red, White, and Black"
   function joinNames(arr) {
     if (arr.length === 1) return arr[0];
     if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
     return arr.slice(0, -1).join(", ") + ", and " + arr[arr.length - 1];
   }
-  const anchorLabel = joinNames(anchorNames);
-  const pullVerb = topColors.length > 1 ? "Your strongest pulls are" : "Your strongest pull is";
-  const drawPhrase = topColors.length > 1
-    ? `which together draw you toward ${anchorTraits}`
-    : `which draws you toward ${COLORS[anchor].traits}`;
 
-  let title, sub, identityHTML;
+  // Build dominant / secondary / tertiary tiers from the identity colors,
+  // grouping any colors tied at the same score into one tier.
+  const tierWords = ["dominant", "secondary", "tertiary"];
+  const tiers = [];
+  let i = 0;
+  while (i < identityColors.length && tiers.length < 3) {
+    const score = tally[identityColors[i]];
+    const group = identityColors.filter(c => tally[c] === score && identityColors.indexOf(c) >= i);
+    tiers.push(group);
+    i += group.length;
+  }
+
+  // The combo name label (Mardu, Esper, Simic, mono, or WUBRG).
+  let comboName;
+  if (allFive) comboName = "WUBRG";
+  else if (n === 1) comboName = `Mono-${COLORS[anchor].name}`;
+  else if (n === 2) comboName = GUILDS[key].name;
+  else comboName = TRIOS[key].name;
+
+  // Title + subtitle
+  const title = comboName;
+  const sub = allFive
+    ? "Every color cleared the bar"
+    : `${names.join(" / ")}`;
+
+  // Tiered identity sentences
+  let identityHTML;
   if (allFive) {
-    title = "WUBRG \u2014 Five-Color";
-    sub = "Every color cleared the bar";
-    identityHTML = `Your color identity is <strong>WUBRG</strong>, the full rainbow. You scored 3 or more in all five colors, which means you don't reject any of them. You value order, knowledge, ambition, passion, and instinct alike, and you refuse to be boxed into a single philosophy.`;
-  } else if (n === 1) {
-    title = `Mono-${COLORS[anchor].name}`;
-    sub = `${tally[anchor]} of ${total} answers`;
-    identityHTML = `Your identity is <strong>Mono-${COLORS[anchor].name}</strong>. As ${COLORS[anchor].name}, you're drawn to ${COLORS[anchor].traits}.`;
-  } else if (n === 2) {
-    const g = GUILDS[key];
-    title = g.name;
-    sub = `${names.join(" / ")} \u2014 anchored in ${anchorLabel}`;
-    identityHTML = `Your color identity is <strong>${g.name}</strong> (${names.join("-")}), ${g.desc} ${pullVerb} ${anchorLabel}, ${drawPhrase}.`;
+    identityHTML = `You scored evenly across all five colors, which makes you <strong>WUBRG</strong>, the full rainbow. You don't reject any single philosophy; you draw on all of them.`;
   } else {
-    const t = TRIOS[key];
-    title = t.name;
-    sub = `${names.join(" / ")} \u2014 anchored in ${anchorLabel}`;
-    identityHTML = `Your color identity is <strong>${t.name}</strong> (${names.join("-")}), ${t.desc} ${pullVerb} ${anchorLabel}, ${drawPhrase}.`;
+    const tierSentences = tiers.map((group, idx) => {
+      const label = tierWords[idx];
+      const colorNames = joinNames(group.map(c => COLORS[c].name));
+      const summaries = group.map(c => COLORS[c].summary).join("; and ");
+      const verb = group.length > 1 ? "traits are" : "trait is";
+      return `Your ${label} ${verb} <strong>${colorNames}</strong>: ${summaries}.`;
+    });
+    identityHTML = tierSentences.join(" ") + ` Together, this is the <strong>${comboName}</strong> identity.`;
   }
 
   $("resTitle").textContent = title;
   $("resSub").textContent = sub;
   $("identity").innerHTML = identityHTML;
 
-  // Ranked breakdown (full)
+  // ---- Ranked breakdown (scores for all five) ----
   const ranksEl = $("ranks");
   ranksEl.innerHTML = "";
   ranked.forEach(c => {
@@ -524,12 +571,19 @@ function showResults() {
       <span class="rank-val">${tally[c]}</span>`;
     ranksEl.appendChild(row);
   });
-  // animate bars
   requestAnimationFrame(() => {
     ranksEl.querySelectorAll(".rank-bar > span").forEach(s => {
       s.style.width = s.dataset.w + "%";
     });
   });
+
+  // ---- Value lists: all five colors, heading + bullets ----
+  const valuesEl = $("valuesBlock");
+  valuesEl.innerHTML = ranked.map(c => `
+    <div class="value-group">
+      <div class="value-head"><span class="pip ${COLORS[c].pip}"></span>${COLORS[c].name}</div>
+      <ul class="value-list">${COLORS[c].values.map(v => `<li>${v}</li>`).join("")}</ul>
+    </div>`).join("");
 }
 
 function orderKey(letters) {
