@@ -293,6 +293,13 @@
     color: var(--gold);
   }
 
+  .share-note {
+    text-align: center;
+    font-style: italic;
+    color: var(--g);
+    margin-top: 0.8rem;
+    font-size: 0.95rem;
+  }
   .hidden { display: none; }
   .fade { animation: fade 0.4s ease; }
   @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -342,8 +349,9 @@
       <div class="values-block" id="valuesBlock"></div>
       <div class="controls">
         <button class="btn" id="retakeBtn">Take it again</button>
-        <span></span>
+        <button class="btn" id="shareBtn">Share my result</button>
       </div>
+      <p class="share-note hidden" id="shareNote">Link copied to your clipboard.</p>
     </div>
   </div>
 </div>
@@ -505,14 +513,18 @@ function choose(color) {
   }
 }
 
-function showResults() {
+let lastTally = null;   // stores the most recent result for sharing
+
+function showResults(presetTally) {
   $("quiz").classList.add("hidden");
   $("results").classList.remove("hidden");
   $("results").classList.add("fade");
+  $("shareNote").classList.add("hidden");
 
-  // Tally
-  const tally = { W:0, U:0, B:0, R:0, G:0 };
-  answers.forEach(c => tally[c]++);
+  // Tally: use a preset (from a shared link) if given, else count answers.
+  const tally = presetTally || { W:0, U:0, B:0, R:0, G:0 };
+  if (!presetTally) answers.forEach(c => tally[c]++);
+  lastTally = tally;
   const ranked = Object.keys(tally).sort((a,b) => tally[b] - tally[a]);
   const total = QUESTIONS.length;
   const max = tally[ranked[0]];
@@ -656,22 +668,121 @@ function orderKey(letters) {
   return letters.slice().sort((x,y) => order.indexOf(x) - order.indexOf(y)).join("");
 }
 
+// ---- Sharing -------------------------------------------------------------
+// Derive the combo name + tier names from a tally, reusing the grading rule.
+function deriveIdentity(tally) {
+  const ranked = Object.keys(tally).sort((a,b) => tally[b] - tally[a] || "WUBRG".indexOf(a) - "WUBRG".indexOf(b));
+  const allFive = ranked.every(c => tally[c] >= 3);
+  const identityColors = allFive ? ranked.slice() : ranked.filter(c => tally[c] >= 3).slice(0, 3);
+  const key = orderKey(identityColors);
+  const n = identityColors.length;
+  let comboName;
+  if (allFive) comboName = "WUBRG";
+  else if (n === 1) comboName = `Mono-${COLORS[identityColors[0]].name}`;
+  else if (n === 2) comboName = GUILDS[key].name;
+  else comboName = TRIOS[key].name;
+
+  // Tier names grouped by score
+  const tiers = [];
+  let i = 0;
+  while (i < identityColors.length && tiers.length < 3) {
+    const score = tally[identityColors[i]];
+    const group = identityColors.filter(c => tally[c] === score && identityColors.indexOf(c) >= i);
+    tiers.push(group.map(c => COLORS[c].name));
+    i += group.length;
+  }
+  return { comboName, tiers };
+}
+
+// Encode a tally into a compact URL parameter: order WUBRG, e.g. r=21534
+function encodeTally(tally) {
+  return "WUBRG".split("").map(c => tally[c]).join("-");
+}
+// Decode "?r=2-1-5-3-4" back into a tally, validating it sums to 15.
+function decodeTally(str) {
+  const parts = str.split("-").map(Number);
+  if (parts.length !== 5 || parts.some(x => isNaN(x) || x < 0 || x > 15)) return null;
+  if (parts.reduce((a,b) => a+b, 0) !== 15) return null;
+  const letters = "WUBRG".split("");
+  const t = {};
+  letters.forEach((c, idx) => t[c] = parts[idx]);
+  return t;
+}
+
+function shareResult() {
+  if (!lastTally) return;
+  const { comboName, tiers } = deriveIdentity(lastTally);
+  const base = window.location.origin + window.location.pathname;
+  const url = `${base}?r=${encodeTally(lastTally)}`;
+
+  const tierLabels = ["Dominant", "Secondary", "Tertiary"];
+  const tierText = tiers.map((names, idx) => `${tierLabels[idx]}: ${names.join(" & ")}`).join(" | ");
+  const text = `My Magic color identity is ${comboName}.\n${tierText}\n\nTake the quiz and find yours: ${url}`;
+
+  copyToClipboard(text);
+}
+
+// Clipboard with a fallback for browsers that block the modern API.
+function copyToClipboard(text) {
+  const done = () => {
+    const note = $("shareNote");
+    note.classList.remove("hidden");
+    setTimeout(() => note.classList.add("hidden"), 4000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+  done();
+}
+
 // ---- Flow ----------------------------------------------------------------
 function startQuiz() {
   current = 0;
   answers = [];
   buildShuffle();          // reshuffle every attempt
+  // Clear any shared-result param so retaking starts clean.
+  if (window.location.search) {
+    history.replaceState(null, "", window.location.pathname);
+  }
   $("intro").classList.add("hidden");
   $("results").classList.add("hidden");
   $("quiz").classList.remove("hidden");
   showQuestion(0);
 }
 
+// On load, check for a shared result in the URL and jump straight to it.
+function checkSharedResult() {
+  const params = new URLSearchParams(window.location.search);
+  const r = params.get("r");
+  if (!r) return false;
+  const tally = decodeTally(r);
+  if (!tally) return false;
+  $("intro").classList.add("hidden");
+  showResults(tally);
+  return true;
+}
+
 $("startBtn").addEventListener("click", startQuiz);
 $("retakeBtn").addEventListener("click", startQuiz);
+$("shareBtn").addEventListener("click", shareResult);
 $("backBtn").addEventListener("click", () => {
   if (current > 0) { current--; showQuestion(current); }
 });
+
+// If someone opened a shared link, show that result on load.
+checkSharedResult();
 </script>
 </body>
 </html>
